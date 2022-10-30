@@ -1,0 +1,104 @@
+<html>
+    <script type="importmap">
+        {
+          "imports": {
+            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+          }
+        }
+    </script>
+    <script type="module">
+        import { createApp , ref, onMounted } from 'vue'
+        
+        createApp({
+            delimiters: ['{(', ')}'],
+            data() {
+                return {
+                    // reactive state
+                    tweets: {{ tweets | safe }},
+                    currentSort: "name",
+                    currentSortDir: "asc",
+                    
+                    tweet: async function (params) {
+                        try {
+                            let response = await fetch("/tweets", params)
+                            let json = await response.json() || {}
+                            if (!response.ok){
+                                let errorMessage = json.error || response.status
+                                throw new Error(errorMessage)
+                            }
+                            this.tweets.push(json)
+                            this.sortTweets()
+                        } catch (err) {
+                            console.log(err);
+                        }
+                    },
+
+                    sort: function(s) {
+                        if(s === this.currentSort) {
+                            this.currentSortDir = this.currentSortDir==='asc'?'desc':'asc';
+                        }
+                        this.currentSort = s;
+
+                        this.sortTweets()
+                    },
+
+                    sortTweets: function (){
+                        this.tweets.sort((a,b) => {
+                            let modifier = 1;
+                            if(this.currentSortDir === 'desc') modifier = -1;
+                            if(a[this.currentSort] < b[this.currentSort]) return -1 * modifier;
+                            if(a[this.currentSort] > b[this.currentSort]) return 1 * modifier;
+                            return 0;
+                        });
+                    },
+
+                }
+            }
+    
+        }).mount('body')
+            
+    </script>
+    <style>
+    table, th, td {
+        border: 1px solid;
+        border-collapse: collapse;
+    }
+        
+  
+    </style>
+    <head>
+    <title>Twitter</title>
+  </head>
+  <body>
+
+    <div>
+        Name: <input :disabled="loading" type="text" ref="name" size="20" maxlength="20"/>
+        Tweet: <input :disabled="loading" type="text" ref="tweet" size="50" maxlength="50"/>
+        <button :disabled="loading" @click="tweet(
+            { body: JSON.stringify({name: $refs.name.value,  tweet: $refs.tweet.value}), 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}
+        })">Tweet!</button>
+    </div>
+    <br>
+    <div>
+        <table>
+            <thead>
+            <tr>
+                <th @click="sort('created_at')">Time</th>
+                <th @click="sort('name')">Name</th>
+                <th>Message</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="tweet in tweets">
+                <td>{(tweet.created_at)}</td>
+                <td>{(tweet.name)}</td>
+                <td>{(tweet.tweet)}</td>
+            </tr>
+            </tbody>
+        </table>
+      
+    </div>
+  </body>
+</html>
